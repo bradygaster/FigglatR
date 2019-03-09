@@ -1,0 +1,41 @@
+﻿@page "/"
+@using FigglatR.App.Services
+@inject FiggleService FiggleService
+
+<div class="main">
+    <div class="top-row px-4">
+        <div class="col-sm-auto">Your banner text: </div>
+        <div class="col-sm-auto">
+            <input type="text" onchange="@UpdateDisplay" bind-value-oninput="@BannerText"/>
+        </div>
+        <div class="col-sm-auto">
+            <a href="https://github.com/Athari/Figgle" target="_blank" class="ml-md-auto">Learn about Figgle</a>
+        </div>
+    </div>
+
+    <div class="content px-4" style="overflow: hidden;">
+    @foreach (var font in FontNames)
+    {
+        <h2>@font</h2>
+        <pre>@FiggleService.GetBannerInFont(font, BannerText)</pre>
+    }
+    </div>
+</div>
+
+@functions {
+    [Parameter]
+    string[] FontNames { get; set; }
+
+    [Parameter]
+    string BannerText { get; set; } = "FigglateIt";
+
+    protected override async Task OnInitAsync()
+    {
+        UpdateDisplay();
+    }
+
+    protected async Task UpdateDisplay()
+    {
+        FontNames = FiggleService.GetFontNames();
+    }
+}
