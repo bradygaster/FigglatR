@@ -1,12 +1,16 @@
 ﻿@page "/"
-@using FigglatR.App.Services
-@inject FiggleService FiggleService
+
+@using FigglatR.App.Services;
+@using System.Timers;
+
+@inject FiggleService FiggleService;
+@inject IJSRuntime JavaScript;
 
 <div class="main">
     <div class="top-row px-4">
         <div class="col-sm-auto">Your banner text: </div>
         <div class="col-sm-auto">
-            <input type="text" onchange="@UpdateDisplay" bind-value-oninput="@BannerText"/>
+            <input type="text" ref="@_bannerElement" onkeyup="@InputChanged" value="@InitialText" />
         </div>
         <div class="col-sm-auto">
             <a href="https://github.com/Athari/Figgle" target="_blank" class="ml-md-auto">Learn about Figgle</a>
@@ -14,28 +18,55 @@
     </div>
 
     <div class="content px-4" style="overflow: hidden;">
-    @foreach (var font in FontNames)
-    {
-        <h2>@font</h2>
-        <pre>@FiggleService.GetBannerInFont(font, BannerText)</pre>
-    }
+        @foreach (var font in _fontNames)
+        {
+            <h2>@font</h2>
+            <pre>@FiggleService.GetBannerInFont(font, _text)</pre>
+        }
     </div>
 </div>
 
 @functions {
-    [Parameter]
-    string[] FontNames { get; set; }
+    ElementRef _bannerElement;
 
-    [Parameter]
-    string BannerText { get; set; } = "FigglateIt";
-
-    protected override async Task OnInitAsync()
+    Timer _debounceTimer = new Timer()
     {
-        UpdateDisplay();
+        Interval = 750,
+        AutoReset = false,
+    };
+
+    string[] _fontNames;
+    string _text;
+
+    [Parameter]
+    string InitialText { get; set; } = "FigglateIt";
+
+    protected override void OnInit()
+    {
+        _fontNames = FiggleService.GetFontNames();
+        _text = InitialText;
+
+        _debounceTimer.Elapsed += async (s, a) =>
+        {
+            _text =
+                await JavaScript.InvokeAsync<string>(
+                    "FigglatR.getValueByElement",
+                    _bannerElement);
+
+            await Invoke(() => StateHasChanged());
+        };
     }
 
-    protected async Task UpdateDisplay()
+    void InputChanged(UIKeyboardEventArgs args)
     {
-        FontNames = FiggleService.GetFontNames();
+        if (_debounceTimer.Enabled)
+        {
+            _debounceTimer.Stop();
+            _debounceTimer.Start();
+        }
+        else
+        {
+            _debounceTimer.Start();
+        }
     }
 }

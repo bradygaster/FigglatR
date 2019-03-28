@@ -6,29 +6,25 @@ namespace FigglatR.App.Services
 {
     public class FiggleService
     {
-        public string[] GetFontNames()
-        {
-            return typeof(FiggleFonts).GetProperties()
+        readonly IDictionary<string, FiggleFont> _fonts;
+
+        public FiggleService() =>
+            _fonts = typeof(FiggleFonts).GetProperties()
                 .Where(x => x.PropertyType == typeof(FiggleFont))
                 .OrderBy(x => x.Name)
-                .Select(x => x.Name)
-                    .ToArray();
-        }
+                .Select(x => (x.Name, Font: (FiggleFont)x.GetValue(typeof(FiggleFonts))))
+                .ToDictionary(x => x.Name, x => x.Font);
 
-        public FiggleFont GetFontByName(string name)
-        {
-            return (FiggleFont)typeof(FiggleFonts).GetProperties()
-                .Where(x => x.PropertyType == typeof(FiggleFont))
-                .Where(x => x.Name == name)
-                .First()
-                    .GetValue(typeof(FiggleFonts));
-        }
+        public string[] GetFontNames() => _fonts.Keys.ToArray();
+
+        public FiggleFont GetFontByName(string name) =>
+            _fonts.TryGetValue(name, out var font) ? font : default;
 
         public string GetBannerInFont(string fontName, string bannerText)
         {
-            try 
+            try
             {
-                return GetFontByName(fontName).Render(bannerText);
+                return GetFontByName(fontName)?.Render(bannerText) ?? fontName;
             }
             catch
             {
